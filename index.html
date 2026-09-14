@@ -873,7 +873,6 @@
       <label>Identification des agents</label>
       <div class="mode-toggle">
         <button type="button" class="mode-btn active" id="nameModeNums" data-namemode="nums">Numéros</button>
-        <button type="button" class="mode-btn" id="nameModeCodes" data-namemode="codes">Noms de code</button>
         <button type="button" class="mode-btn" id="nameModeCustom" data-namemode="custom">Prénoms</button>
       </div>
       <div id="customNamesBox" class="custom-names-box hidden"></div>
@@ -1567,7 +1566,7 @@
   let numUndercover = 1;
   let gameMode = 'blank';    // 'blank' | 'pair' | 'mix'
   let selectedTheme = 'all';
-  let nameMode = 'nums';     // 'nums' | 'codes' | 'custom'
+  let nameMode = 'nums';     // 'nums' | 'custom'
   let customNames = [];
   let secretWord = null;     // [ar, fr]
   let impostorWord = null;   // [ar, fr]
@@ -1615,7 +1614,6 @@
   const recapTheme = el('recapTheme');
 
   const nameModeNums = el('nameModeNums');
-  const nameModeCodes = el('nameModeCodes');
   const nameModeCustom = el('nameModeCustom');
   const customNamesBox = el('customNamesBox');
 
@@ -1707,14 +1705,12 @@
   function setNameMode(mode){
     nameMode = mode;
     nameModeNums.classList.toggle('active', mode === 'nums');
-    nameModeCodes.classList.toggle('active', mode === 'codes');
     nameModeCustom.classList.toggle('active', mode === 'custom');
     customNamesBox.classList.toggle('hidden', mode !== 'custom');
     if (mode === 'custom') renderCustomNameInputs();
     playSfx('click');
   }
   nameModeNums.addEventListener('click', () => setNameMode('nums'));
-  nameModeCodes.addEventListener('click', () => setNameMode('codes'));
   nameModeCustom.addEventListener('click', () => setNameMode('custom'));
 
   function renderCustomNameInputs(){
@@ -1742,9 +1738,6 @@
   function getPlayerDisplayName(i){
     if (nameMode === 'custom' && customNames[i]) {
       return customNames[i];
-    }
-    if (nameMode === 'codes') {
-      return `Agent ${SPY_CODENAMES[i % SPY_CODENAMES.length]}`;
     }
     return `Agent ${i + 1}`;
   }
