@@ -1063,9 +1063,11 @@
       <div class="roster-row"><span>Secteur / Thème :</span><b id="recapTheme">—</b></div>
       <div class="roster-row"><span>Mot du groupe :</span><b id="recapWord">—</b></div>
       <div class="roster-row"><span>Imposteur(s) :</span><b id="recapImp">—</b></div>
+      <div class="roster-row hidden" id="recapWhiteGuessRow"><span>Supposition Mr. White :</span><b id="recapWhiteGuessVal">—</b></div>
     </div>
 
-    <button class="btn-primary" id="revealAllBtn" style="margin-top:16px;">Afficher tous les dossiers secrets (Fin de manche)</button>
+    <button type="button" class="btn-ghost hidden" id="showWhiteGuessBtn" style="border-style:dashed; border-color:var(--gold); color:var(--gold); margin-top:12px;">👁️ Voir la supposition de Mr. White</button>
+    <button class="btn-primary" id="revealAllBtn" style="margin-top:14px;">Afficher tous les dossiers secrets (Fin de manche)</button>
     <button class="btn-ghost" id="replayBtn">Nouvelle manche</button>
   </div>
 
@@ -1676,6 +1678,10 @@
   const whiteGuessYes = el('whiteGuessYes');
   const whiteGuessNo = el('whiteGuessNo');
   const confirmEliminateBtn = el('confirmEliminateBtn');
+  const recapWhiteGuessRow = el('recapWhiteGuessRow');
+  const recapWhiteGuessVal = el('recapWhiteGuessVal');
+  const showWhiteGuessBtn = el('showWhiteGuessBtn');
+  let whiteGuessVisible = false;
 
   // Peek word elements
   const topPeekBtn = el('topPeekBtn');
@@ -2094,6 +2100,7 @@
 
     renderSuspectsBoard();
     updateLiveCounts();
+    updateWhiteGuessDisplay();
     topPeekBtn.classList.remove('hidden');
     showScreen(screenEnd);
   }
@@ -2377,6 +2384,14 @@
     const isCorrect = isMrWhiteGuessCorrect(guess, secretWord);
     whiteGuessFeedback.classList.remove('hidden');
 
+    // Save Mr. White's guess for the game manager
+    players[activeSuspectIndex].mrWhiteGuess = {
+      guess: guess,
+      isCorrect: isCorrect,
+      manualOverride: false
+    };
+    updateWhiteGuessDisplay();
+
     if (isCorrect) {
       playSfx('win');
       whiteGuessFeedback.style.background = 'rgba(185,151,74,0.2)';
@@ -2418,10 +2433,22 @@
 
   confirmEliminateBtn.addEventListener('click', () => {
     playSfx('stamp');
-    players[activeSuspectIndex].isEliminated = true;
+    const p = players[activeSuspectIndex];
+    if (p.role === 'white' && !p.mrWhiteGuess) {
+      const typed = whiteGuessInput.value.trim();
+      if (typed) {
+        p.mrWhiteGuess = {
+          guess: typed,
+          isCorrect: isMrWhiteGuessCorrect(typed, secretWord),
+          manualOverride: false
+        };
+      }
+    }
+    p.isEliminated = true;
     renderSuspectsBoard();
     updateLiveCounts();
     checkVictoryConditions();
+    updateWhiteGuessDisplay();
     showScreen(screenEnd);
   });
 
@@ -2432,6 +2459,13 @@
 
   whiteGuessYes.addEventListener('click', () => {
     playSfx('win');
+    const guess = whiteGuessInput.value.trim() || (players[activeSuspectIndex].mrWhiteGuess ? players[activeSuspectIndex].mrWhiteGuess.guess : "(Oral / Hors-champ)");
+    players[activeSuspectIndex].mrWhiteGuess = {
+      guess: guess,
+      isCorrect: true,
+      manualOverride: true
+    };
+    updateWhiteGuessDisplay();
     whiteGuessFeedback.classList.remove('hidden');
     whiteGuessFeedback.style.background = 'rgba(185,151,74,0.2)';
     whiteGuessFeedback.style.border = '1px solid var(--gold)';
@@ -2454,11 +2488,67 @@
 
   whiteGuessNo.addEventListener('click', () => {
     playSfx('alert');
-    players[activeSuspectIndex].isEliminated = true;
+    const p = players[activeSuspectIndex];
+    if (p.role === 'white' && !p.mrWhiteGuess) {
+      const typed = whiteGuessInput.value.trim();
+      if (typed) {
+        p.mrWhiteGuess = {
+          guess: typed,
+          isCorrect: false,
+          manualOverride: false
+        };
+      }
+    }
+    p.isEliminated = true;
     renderSuspectsBoard();
     updateLiveCounts();
     checkVictoryConditions();
+    updateWhiteGuessDisplay();
     showScreen(screenEnd);
+  });
+
+  function updateWhiteGuessDisplay(forceShow){
+    if (forceShow === true) {
+      whiteGuessVisible = true;
+    }
+    const whitePlayers = players.filter(p => p.role === 'white');
+    if (whitePlayers.length === 0) {
+      showWhiteGuessBtn.classList.add('hidden');
+      recapWhiteGuessRow.classList.add('hidden');
+      return;
+    }
+
+    showWhiteGuessBtn.classList.remove('hidden');
+
+    const lines = whitePlayers.map(p => {
+      const g = p.mrWhiteGuess;
+      if (!g || !g.guess) {
+        return whitePlayers.length > 1
+          ? `<span>${p.name} : <i style="color:var(--paper-dim); font-weight:normal;">(Aucune supposition saisie)</i></span>`
+          : `<i style="color:var(--paper-dim); font-weight:normal;">(Aucune supposition saisie)</i>`;
+      }
+      const icon = g.isCorrect ? '✅ EXACT' : '❌ FAUX';
+      const color = g.isCorrect ? 'var(--gold)' : 'var(--redact)';
+      const text = `"${g.guess}" <span style="color:${color}; font-size:11px; margin-left:4px; font-weight:bold;">[${icon}]</span>`;
+      return whitePlayers.length > 1 ? `<span>${p.name} : ${text}</span>` : text;
+    });
+
+    recapWhiteGuessVal.innerHTML = lines.join('<br>');
+
+    if (whiteGuessVisible) {
+      recapWhiteGuessRow.classList.remove('hidden');
+      showWhiteGuessBtn.textContent = '🙈 Masquer la supposition de Mr. White';
+    } else {
+      recapWhiteGuessRow.classList.add('hidden');
+      showWhiteGuessBtn.textContent = '👁️ Voir la supposition de Mr. White';
+    }
+  }
+
+  showWhiteGuessBtn.addEventListener('click', () => {
+    initAudio();
+    playSfx('click');
+    whiteGuessVisible = !whiteGuessVisible;
+    updateWhiteGuessDisplay();
   });
 
   // ---- End Game & Reveal All Roles ----
@@ -2517,6 +2607,7 @@
     // Reveal roles on suspect cards
     players.forEach(p => p.isEliminated = true);
     renderSuspectsBoard();
+    updateWhiteGuessDisplay(true);
   }
 
   el('revealAllBtn').addEventListener('click', () => {
@@ -2533,6 +2624,10 @@
     players = [];
     currentIndex = 0;
     isGameOver = false;
+    whiteGuessVisible = false;
+    recapWhiteGuessRow.classList.add('hidden');
+    recapWhiteGuessVal.textContent = '—';
+    showWhiteGuessBtn.classList.add('hidden');
     showScreen(screenSetup);
   });
 
