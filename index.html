@@ -312,22 +312,30 @@
   }
   .face-back .word{
     font-family:'Special Elite', monospace;
-    font-size:38px;
-    line-height:1.3;
+    font-size:clamp(20px, 5.5vw, 34px);
+    line-height:1.25;
     word-break:break-word;
   }
   .face-back .word.ar{
     font-family: 'Segoe UI', Tahoma, 'Arial', sans-serif;
-    font-size:40px;
+    font-size:clamp(26px, 7vw, 40px);
     font-weight:700;
     direction:rtl;
     margin-bottom:4px;
   }
   .face-back .translit{
-    margin-top:12px;
+    margin-top:10px;
     font-size:14px;
     color:var(--teal);
-    opacity:0.8;
+    opacity:0.85;
+    line-height:1.4;
+  }
+  .face-back .translit.ar{
+    font-family: 'Segoe UI', Tahoma, 'Arial', sans-serif;
+    font-size:18px;
+    font-weight:600;
+    direction:rtl;
+    margin-top:8px;
   }
   .face-back.blank .word{
     color:var(--redact);
@@ -938,6 +946,13 @@
     <!-- Advanced Options -->
     <div class="field" style="border-top:1px solid var(--line); padding-top:14px; margin-top:14px;">
       <label>Options de jeu</label>
+      <label class="toggle-row">
+        <span>Langue du mot principal</span>
+        <select id="langSelect" class="theme-select" style="width:auto; padding:4px 24px 4px 10px; font-size:11.5px;">
+          <option value="ar" selected>Arabe en grand</option>
+          <option value="fr">Français en grand</option>
+        </select>
+      </label>
       <label class="toggle-row">
         <span>Garantir un civil en 1er orateur</span>
         <input type="checkbox" id="optFirstCivil" checked>
@@ -1617,6 +1632,7 @@
   const nameModeCustom = el('nameModeCustom');
   const customNamesBox = el('customNamesBox');
 
+  const langSelect = el('langSelect');
   const optFirstCivil = el('optFirstCivil');
   const timerSelect = el('timerSelect');
   const optHoldPeek = el('optHoldPeek');
@@ -1989,28 +2005,35 @@
 
     const p = players[currentIndex];
     const isHoldMode = optHoldPeek.checked;
+    const isFrBig = langSelect ? (langSelect.value === 'fr') : false;
     cardHoldHint.classList.toggle('hidden', !isHoldMode);
     cardTapHint.textContent = isHoldMode ? "Maintenez le doigt appuyé pour voir" : "Touchez la carte pour révéler";
 
     if (p.role === 'white') {
       cardBack.classList.add('blank');
-      cardRoleLabel.textContent = "DOSSIER CLASSIFIÉ";
-      cardWord.textContent = 'AUCUN MOT — VOUS ÊTES MR. WHITE';
+      cardRoleLabel.textContent = "VOTRE MOT SECRET";
+      cardWord.textContent = 'AUCUN MOT';
       cardWord.classList.remove('ar');
-      cardTranslit.textContent = 'Écoutez les indices des autres, déduisez le sujet et fondez-vous dans la masse.';
+      cardTranslit.classList.remove('ar');
+      cardTranslit.textContent = 'Vous n\'avez aucun mot secret — bluffez pour vous fondre dans la masse.';
       const bar = document.createElement('div');
       bar.className = 'redact-bar';
       cardBack.appendChild(bar);
-    } else if (p.role === 'undercover') {
-      cardRoleLabel.textContent = "VOTRE MOT SECRET";
-      cardWord.classList.add('ar');
-      cardWord.textContent = impostorWord[0];
-      cardTranslit.textContent = `${impostorWord[1]} — vous êtes Undercover, mais restez discret.`;
     } else {
+      // Both Civil and Undercover see only their assigned word without knowing their role
+      const wordPair = (p.role === 'undercover') ? impostorWord : secretWord;
       cardRoleLabel.textContent = "VOTRE MOT SECRET";
-      cardWord.classList.add('ar');
-      cardWord.textContent = secretWord[0];
-      cardTranslit.textContent = secretWord[1];
+      if (isFrBig) {
+        cardWord.classList.remove('ar');
+        cardWord.textContent = wordPair[1];
+        cardTranslit.classList.add('ar');
+        cardTranslit.textContent = wordPair[0];
+      } else {
+        cardWord.classList.add('ar');
+        cardWord.textContent = wordPair[0];
+        cardTranslit.classList.remove('ar');
+        cardTranslit.textContent = wordPair[1];
+      }
     }
 
     if (isHoldMode) {
@@ -2544,22 +2567,30 @@
     peekTapHint.textContent = isHoldMode ? "Maintenez le doigt appuyé pour voir" : "Touchez la carte pour révéler";
     peekCardLabel.textContent = "VOTRE MOT SECRET";
 
+    const isFrBig = langSelect ? (langSelect.value === 'fr') : false;
+
     if (p.role === 'white') {
       peekCardBack.classList.add('blank');
       peekCardWord.textContent = 'AUCUN MOT';
       peekCardWord.classList.remove('ar');
+      peekCardTranslit.classList.remove('ar');
       peekCardTranslit.textContent = "Vous n'avez aucun mot secret.";
       const bar = document.createElement('div');
       bar.className = 'redact-bar';
       peekCardBack.appendChild(bar);
-    } else if (p.role === 'undercover') {
-      peekCardWord.classList.add('ar');
-      peekCardWord.textContent = impostorWord[0];
-      peekCardTranslit.textContent = impostorWord[1];
     } else {
-      peekCardWord.classList.add('ar');
-      peekCardWord.textContent = secretWord[0];
-      peekCardTranslit.textContent = secretWord[1];
+      const wordPair = (p.role === 'undercover') ? impostorWord : secretWord;
+      if (isFrBig) {
+        peekCardWord.classList.remove('ar');
+        peekCardWord.textContent = wordPair[1];
+        peekCardTranslit.classList.add('ar');
+        peekCardTranslit.textContent = wordPair[0];
+      } else {
+        peekCardWord.classList.add('ar');
+        peekCardWord.textContent = wordPair[0];
+        peekCardTranslit.classList.remove('ar');
+        peekCardTranslit.textContent = wordPair[1];
+      }
     }
 
     if (isHoldMode) {
